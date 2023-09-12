@@ -1,0 +1,9 @@
+version: "3"
+
+services:
+  # the application
+  teamj-server:
+    image: thomasg/archi_cloud_td1_application
+    container_name: application
+    ports:
+      - "8080:8080"
