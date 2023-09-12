@@ -2,8 +2,30 @@ version: "3"
 
 services:
   # the application
-  teamj-server:
+  thomasg-server:
     image: thomasg/archi_cloud_td1_application
     container_name: application
+    environment:
+      - POSTGRES_PASSWORD=postgrespass
+      - POSTGRES_USER=postgresuser
+      - POSTGRES_DB=thomasg-db
+      - POSTEGRES_URL=thomasg-postgres:5432
+    depends_on:
+      - thomasg-postgres
     ports:
       - "8080:8080"
+
+  thomasg-postgres:
+    image: postgres:15.2
+    container_name: db
+    environment:
+      - POSTGRES_PASSWORD=postgrespass
+      - POSTGRES_USER=postgresuser
+      - POSTGRES_DB=thomasg-db
+    ports:
+      - "5432:5432"
+    expose:
+      - 5432
+
+volumes:
+  thomasg-postgres-data:
