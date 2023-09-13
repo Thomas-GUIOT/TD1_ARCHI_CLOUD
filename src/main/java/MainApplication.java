@@ -10,9 +10,6 @@ import java.net.InetSocketAddress;
 
 public class MainApplication {
 
-    //    volumes:
-    //      - thomasg-postgres-data:/var/lib/postgresql/data
-
     private static final String COUNTER_TABLE_NAME = "counter";
     private static final int COUNTER_USED_COLUMN_ID = 0;
     private static final String POSTGRES_USER = System.getenv("POSTGRES_USER");
@@ -28,7 +25,7 @@ public class MainApplication {
         // Chargez le pilote JDBC PostgreSQL
         Class.forName("org.postgresql.Driver");
 
-        connectionWithDb = DriverManager.getConnection("jdbc:postgresql:" + POSTEGRES_URL + "/" + POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD);
+        connectionWithDb = DriverManager.getConnection("jdbc:postgresql://" + POSTEGRES_URL + "/" + POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD);
 
         createOrInitTable();
 
@@ -38,7 +35,7 @@ public class MainApplication {
 
         // Créez un gestionnaire pour répondre aux requêtes HTTP
         server.createContext("/", new WelcomeHandler());
-        server.createContext("/refresh/", new RequestHandler());
+        server.createContext("/refresh", new RequestHandler());
 
         // Démarrez le serveur
         server.start();
@@ -75,23 +72,23 @@ public class MainApplication {
         Statement statement = connectionWithDb.createStatement();
         statement.executeUpdate(createTableSQL);
         statement.close();
-        System.out.println("La table 'compteur' a été créée.");
+        System.out.println("La table 'counter' a été créée.");
     }
 
     // Ajoute un enregistrement initial avec id=0 et valeur=0
     private static void insertInitialRecord() throws SQLException {
-        String insertSQL = "INSERT INTO " + COUNTER_TABLE_NAME + " (id, valeur) VALUES (?, ?)";
+        String insertSQL = "INSERT INTO " + COUNTER_TABLE_NAME + " (id, value) VALUES (?, ?)";
         try (PreparedStatement preparedStatement = connectionWithDb.prepareStatement(insertSQL)) {
             preparedStatement.setInt(1, COUNTER_USED_COLUMN_ID);
             preparedStatement.setInt(2, 0);
             preparedStatement.executeUpdate();
             preparedStatement.close();
-            System.out.println("Enregistrement initial ajouté à la table 'compteur'");
+            System.out.println("Enregistrement initial ajouté à la table 'counter'");
         }
     }
 
     private static void incrementCounterRecord() throws SQLException {
-        String updateSQL = "UPDATE " + COUNTER_TABLE_NAME + " SET value = value + 1 WHERE id = " + COUNTER_TABLE_NAME;
+        String updateSQL = "UPDATE " + COUNTER_TABLE_NAME + " SET value = value + 1 WHERE id = " + COUNTER_USED_COLUMN_ID;
         Statement statement = connectionWithDb.createStatement();
         statement.executeUpdate(updateSQL);
         statement.close();
@@ -102,7 +99,11 @@ public class MainApplication {
         String selectSQL = "SELECT value FROM " + COUNTER_TABLE_NAME + " WHERE id = " + COUNTER_USED_COLUMN_ID;
         Statement statement = connectionWithDb.createStatement();
 
-        return statement.executeQuery(selectSQL).getInt("value");
+        ResultSet result = statement.executeQuery(selectSQL);
+        if(result.next()){
+            return result.getInt("value");
+        }
+        return -1;
     }
 
     static class WelcomeHandler implements HttpHandler {
@@ -165,8 +166,10 @@ public class MainApplication {
                 os.close();
 
             } catch (SQLException e) {
+                System.out.println("Exception catch " + e.getMessage());
                 exchange.sendResponseHeaders(500, -1);
-                System.err.println(e.getStackTrace());            }
+                e.printStackTrace();
+            }
         }
     }
 
